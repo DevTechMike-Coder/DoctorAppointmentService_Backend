@@ -51,9 +51,11 @@
 		</dependency>
 
 		<!-- Database Migrations -->
+		<!-- Spring Boot 4: flyway-core alone no longer triggers auto-configuration.
+		     The starter brings spring-boot-flyway (the auto-config module) + flyway-core. -->
 		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
