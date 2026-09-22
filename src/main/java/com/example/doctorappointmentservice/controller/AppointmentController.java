@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST endpoints for booking and managing appointments. Access to individual
+ * appointments is restricted to admins or the patient/doctor who owns them,
+ * enforced via {@code @PreAuthorize} and {@code AppointmentSecurity}.
+ */
 @RestController
 @RequestMapping("/api/v1/appointments")
 @RequiredArgsConstructor
@@ -22,6 +27,10 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
+    /**
+     * {@code POST /api/v1/appointments} — books an appointment for the
+     * currently authenticated patient. Patient-only.
+     */
     @PostMapping
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<AppointmentDto> bookAppointment(
@@ -32,12 +41,20 @@ public class AppointmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(booked);
     }
 
+    /**
+     * {@code GET /api/v1/appointments/{id}} — fetches one appointment.
+     * Allowed for admins, or the patient/doctor who owns the appointment.
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @appointmentSecurity.isOwner(#id, authentication)")
     public ResponseEntity<AppointmentDto> getAppointmentById(@PathVariable Long id) {
         return ResponseEntity.ok(appointmentService.getAppointmentById(id));
     }
 
+    /**
+     * {@code GET /api/v1/appointments/me} — lists the current patient's own
+     * appointments. Patient-only.
+     */
     @GetMapping("/me")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<List<AppointmentDto>> getMyAppointments(
@@ -46,12 +63,20 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAppointmentsForPatient(principal.getId()));
     }
 
+    /**
+     * {@code GET /api/v1/appointments/doctor/{doctorId}} — lists all
+     * appointments for a given doctor. Doctor/Admin only.
+     */
     @GetMapping("/doctor/{doctorId}")
     @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
     public ResponseEntity<List<AppointmentDto>> getAppointmentsForDoctor(@PathVariable Long doctorId) {
         return ResponseEntity.ok(appointmentService.getAppointmentsForDoctor(doctorId));
     }
 
+    /**
+     * {@code PATCH /api/v1/appointments/{id}/status} — changes an
+     * appointment's status (e.g. confirm/cancel/complete). Doctor/Admin only.
+     */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
     public ResponseEntity<AppointmentDto> updateStatus(
@@ -62,6 +87,10 @@ public class AppointmentController {
         return ResponseEntity.ok(updated);
     }
 
+    /**
+     * {@code DELETE /api/v1/appointments/{id}} — cancels an appointment and
+     * frees its slot. Allowed for admins, or the patient/doctor who owns it.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @appointmentSecurity.isOwner(#id, authentication)")
     public ResponseEntity<Void> cancelAppointment(@PathVariable Long id) {

@@ -22,6 +22,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Central Spring Security configuration: stateless JWT-based auth, CORS
+ * rules for the frontend origins, password hashing, and which endpoints
+ * are public vs. require authentication. {@code @EnableMethodSecurity}
+ * turns on the {@code @PreAuthorize} checks used throughout the controllers.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -31,11 +37,13 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
 
+    /** Password hashing strategy (BCrypt, strength 12) used for storing and checking credentials. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
 
+    /** Wires {@link CustomUserDetailsService} + {@link PasswordEncoder} into Spring Security's DAO-based auth provider. */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
@@ -43,11 +51,13 @@ public class SecurityConfig {
         return provider;
     }
 
+    /** Exposes Spring's default {@link AuthenticationManager} bean for use elsewhere (e.g. login flows). */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    /** Allows the deployed frontend origins to call this API with credentials, restricted to the HTTP methods/headers actually used. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -61,6 +71,13 @@ public class SecurityConfig {
         return source;
     }
 
+    /**
+     * Defines the HTTP security rules: disables CSRF (not needed for a
+     * stateless token API), enables CORS, forces stateless sessions,
+     * permits auth and public doctor-browsing endpoints, requires
+     * authentication for everything else, and inserts {@link JwtAuthFilter}
+     * before Spring's default username/password filter.
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

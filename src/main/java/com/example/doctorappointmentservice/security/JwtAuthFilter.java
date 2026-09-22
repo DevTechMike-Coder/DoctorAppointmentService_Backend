@@ -15,6 +15,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Servlet filter that runs once per request, ahead of Spring Security's
+ * username/password filter. Reads a "Bearer" JWT from the Authorization
+ * header, validates it, and — if valid — populates the
+ * {@link SecurityContextHolder} so downstream {@code @PreAuthorize} checks
+ * see an authenticated user.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -22,6 +29,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
 
+    /**
+     * Extracts and validates the bearer token (if any), authenticates the
+     * request when the token is valid, and always continues the filter chain.
+     * Requests with no/invalid tokens are simply left unauthenticated —
+     * they're rejected later by {@code SecurityConfig}'s authorization rules.
+     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,

@@ -8,6 +8,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+/**
+ * Authorization helper used from {@code @PreAuthorize} SpEL expressions to
+ * decide whether the current doctor user owns a given doctor profile or slot,
+ * so doctors can only manage their own availability.
+ */
 @Component("availabilitySecurity")
 @RequiredArgsConstructor
 public class AvailabilitySecurity {
@@ -47,6 +52,11 @@ public class AvailabilitySecurity {
                 .orElse(false);
     }
 
+    /**
+     * Pulls the current user's id out of the authentication principal.
+     *
+     * @return the user id, or null if the principal isn't a {@link CustomUserDetails}
+     */
     private Long extractUserId(Authentication authentication) {
         if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
             return null;

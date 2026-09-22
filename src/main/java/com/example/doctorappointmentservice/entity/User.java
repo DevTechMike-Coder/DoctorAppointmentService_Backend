@@ -4,6 +4,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+/**
+ * Core account record for anyone using the system (patient, doctor, or
+ * admin). Authentication is based on {@code email}/{@code passwordHash};
+ * authorization is based on {@code role}.
+ */
 @Entity
 @Table(name = "users")
 @Getter
@@ -33,6 +38,10 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * JPA lifecycle callback invoked before the entity is first persisted.
+     * Stamps the account creation timestamp.
+     */
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

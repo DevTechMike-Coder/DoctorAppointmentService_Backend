@@ -5,6 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Request body for {@code POST /api/v1/auth/register}: new-account details.
+ * {@code role} is validated/parsed against {@link com.example.doctorappointmentservice.entity.Role}
+ * in {@code AuthService}.
+ */
 public record RegisterRequest(
 
         @NotBlank(message = "Full name is required")

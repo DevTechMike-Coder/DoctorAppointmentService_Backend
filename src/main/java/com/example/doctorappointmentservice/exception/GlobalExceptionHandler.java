@@ -13,11 +13,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 
+/**
+ * Centralized exception-to-HTTP-response mapping for the whole REST API.
+ * Converts each known exception type into a consistent {@link ErrorResponse}
+ * JSON body with an appropriate HTTP status code, so controllers don't need
+ * their own try/catch blocks.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /** Handles {@link ResourceNotFoundException} → HTTP 404. */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
             ResourceNotFoundException ex, HttpServletRequest request) {
@@ -30,6 +37,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    /** Handles {@link InvalidCredentialsException} → HTTP 401. */
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex, HttpServletRequest request) {
@@ -42,6 +50,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
+    /** Handles {@link SlotUnavailableException} → HTTP 409. */
     @ExceptionHandler(SlotUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleSlotUnavailable(
             SlotUnavailableException ex, HttpServletRequest request) {
@@ -54,6 +63,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    /**
+     * Handles {@link DataIntegrityViolationException} → HTTP 409.
+     * Typically raised by a DB unique-constraint violation, e.g. a race
+     * where two requests booked the same slot at once; logs the raw
+     * exception but returns a friendly message to the client.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, HttpServletRequest request) {
@@ -67,6 +82,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    /**
+     * Handles bean-validation failures (e.g. {@code @Valid} on request DTOs)
+     * → HTTP 400, including a list of per-field validation messages.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -83,6 +102,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /** Handles {@link IllegalArgumentException} (e.g. bad input values) → HTTP 400. */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {
@@ -95,6 +115,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /** Handles {@link IllegalStateException} (e.g. invalid state transitions) → HTTP 409. */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(
             IllegalStateException ex, HttpServletRequest request) {
@@ -107,6 +128,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    /**
+     * Catch-all fallback for any exception not handled above → HTTP 500.
+     * Logs the full stack trace server-side but hides internal details
+     * from the client response.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {

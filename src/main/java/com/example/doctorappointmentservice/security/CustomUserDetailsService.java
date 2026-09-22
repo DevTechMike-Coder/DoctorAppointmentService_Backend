@@ -8,12 +8,22 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+/**
+ * Loads a {@link User} by email (used as the "username") and wraps it in a
+ * {@link CustomUserDetails} for Spring Security. Used by the JWT filter and
+ * the DAO authentication provider.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    /**
+     * @param email the account's login email
+     * @return Spring Security user details for the matching account
+     * @throws UsernameNotFoundException if no account exists for that email
+     */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)

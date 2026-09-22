@@ -5,6 +5,11 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
+/**
+ * Doctor-specific profile data attached one-to-one to a {@link User} whose
+ * role is DOCTOR. Holds the information patients see when browsing or
+ * searching for doctors (specialization, bio, consultation fee, etc.).
+ */
 @Entity
 @Table(name = "doctor_profiles")
 @Getter

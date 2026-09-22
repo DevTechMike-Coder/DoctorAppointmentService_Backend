@@ -13,6 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Handles account registration and login: creates {@link User} records
+ * with hashed passwords and issues JWTs via {@link JwtService}.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -21,6 +25,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    /**
+     * Creates a new account, hashing the given password and validating the
+     * requested role, then immediately issues a login token for it.
+     *
+     * @param request new-account details (name, email, password, role)
+     * @return a token plus basic identity info for the new account
+     * @throws IllegalArgumentException if the email is already registered or the role is invalid
+     */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
@@ -48,6 +60,13 @@ public class AuthService {
         return new AuthResponse(token, user.getId(), user.getFullName(), user.getRole().name());
     }
 
+    /**
+     * Authenticates a user by email/password and issues a fresh JWT.
+     *
+     * @param request the login credentials
+     * @return a token plus basic identity info for the account
+     * @throws com.example.doctorappointmentservice.exception.InvalidCredentialsException if the email doesn't exist or the password doesn't match
+     */
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
