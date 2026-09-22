@@ -39,12 +39,12 @@ exception/    Custom exceptions + @RestControllerAdvice global handler
 
 Never commit secrets. Set these via your run config, shell export, or a gitignored `.env`:
 
-| Variable | Description |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://<host>/<dbname>?sslmode=require` (Neon requires `sslmode=require`) |
-| `DB_USERNAME` | Postgres role username |
-| `DB_PASSWORD` | Postgres role password |
-| `JWT_SECRET` | 256-bit random secret, base64 or hex. Generate with `openssl rand -base64 32` (or PowerShell `RandomNumberGenerator` if `openssl` isn't on PATH) |
+| Variable      | Description                                                                                                                                      |
+|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DB_URL`      | `jdbc:postgresql://<host>/<dbname>?sslmode=require` (Neon requires `sslmode=require`)                                                            |
+| `DB_USERNAME` | Postgres role username                                                                                                                           |
+| `DB_PASSWORD` | Postgres role password                                                                                                                           |
+| `JWT_SECRET`  | 256-bit random secret, base64 or hex. Generate with `openssl rand -base64 32` (or PowerShell `RandomNumberGenerator` if `openssl` isn't on PATH) |
 
 `application.yml` reads these with no fallback for secrets — the app fails to boot rather than silently running with a missing/default secret. This is intentional.
 
@@ -71,7 +71,7 @@ Database (Postgres)    → Neon (via Vercel integration, or standalone via neonc
 
 Tracking items from the last code review — check these off as they're fixed:
 
-- [ ] **Password max length bug** — `RegisterRequest.password` is currently `@Size(min = 6, max = 8)`. The `max = 8` cap is a security anti-pattern (rejects strong passphrases). Fix: `@Size(min = 8, max = 72)` (72 = BCrypt's byte limit).
+- [ ] **Password max length bug** — `RegisterRequest.password` is currently `@Size(min = 6, max = 8)`. The `max = 8` cap is a security antipattern (rejects strong passphrases). Fix: `@Size(min = 8, max = 72)` (72 = BCrypt's byte limit).
 - [ ] **Unmapped exceptions return 500 instead of proper status codes.** `AuthService.register()` throws `IllegalArgumentException` (duplicate email / invalid role); `AvailabilityService.deleteSlot()` throws `IllegalStateException`. Neither has a `GlobalExceptionHandler` mapping yet — add handlers returning 409 Conflict.
 - [ ] **`JwtAuthFilter` doesn't catch `UsernameNotFoundException`.** A token whose subject email no longer exists (deleted user, stale token) currently causes an uncaught 500 instead of falling through as unauthenticated.
 - [ ] **No Flyway migrations committed yet.** Schema needs `V1__init_schema.sql` matching current entities before this will actually boot against a fresh database.
