@@ -2,6 +2,7 @@ package com.example.doctorappointmentservice.security;
 
 import com.example.doctorappointmentservice.entity.User;
 import com.example.doctorappointmentservice.repository.UserRepository;
+import com.example.doctorappointmentservice.service.email.EmailSettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final EmailSettings emailSettings;
 
     /**
      * @param email the account's login email
@@ -28,6 +30,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("No user found with email: " + email));
-        return new CustomUserDetails(user);
+        boolean enabled = user.isEmailVerified() || !emailSettings.isVerificationRequired();
+        return new CustomUserDetails(user, enabled);
     }
 }

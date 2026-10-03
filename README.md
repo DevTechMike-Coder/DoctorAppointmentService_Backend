@@ -100,3 +100,19 @@ GET    /api/v1/appointments/doctor/{doctorId}      (DOCTOR / ADMIN)
 PATCH  /api/v1/appointments/{id}/status             (DOCTOR / ADMIN)
 DELETE /api/v1/appointments/{id}                    (owner / ADMIN)
 ```
+
+## Email verification & profile photos
+
+Set these on Railway to turn on verification (all optional locally; with no `BREVO_API_KEY` the verification link is logged instead of emailed):
+
+| Variable | Purpose |
+|---|---|
+| `EMAIL_VERIFICATION_REQUIRED` | `true` to block sign-in until the email is verified (default `false`) |
+| `BREVO_API_KEY` | Brevo API key (HTTPS API; Railway blocks outbound SMTP on most plans) |
+| `MAIL_FROM_ADDRESS` | Sender address verified in Brevo |
+| `MAIL_FROM_NAME` | Sender display name (default `MedBook`) |
+| `FRONTEND_URL` | Public frontend origin used in the emailed link, e.g. `https://doctor-appointment-service-frontend.vercel.app` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins, no trailing slash |
+
+Registration always rejects reserved (`example.com`, `*.test`, ...), known disposable, and DNS-dead domains, even with verification off.
+Doctor photos: `POST/DELETE /api/v1/doctors/profile/photo` (doctor-only), `GET /api/v1/doctors/{id}/photo` (public). Uploads are limited to 2 MB, validated by magic bytes, and re-encoded to a 512x512 JPEG.

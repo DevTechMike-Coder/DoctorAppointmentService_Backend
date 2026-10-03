@@ -15,7 +15,8 @@ public record DoctorDto(
         String specialization,
         String qualifications,
         String bio,
-        BigDecimal consultationFee
+        BigDecimal consultationFee,
+        String photoUrl
 ) {
     /**
      * Builds a {@link DoctorDto} from a {@link DoctorProfile} entity.
@@ -31,7 +32,10 @@ public record DoctorDto(
                 profile.getSpecialization(),
                 profile.getQualifications(),
                 profile.getBio(),
-                profile.getConsultationFee()
+                profile.getConsultationFee(),
+                profile.getPhotoVersion() == null
+                        ? null
+                        : "/doctors/" + profile.getId() + "/photo?v=" + profile.getPhotoVersion()
         );
     }
 }

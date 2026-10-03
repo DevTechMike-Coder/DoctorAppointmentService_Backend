@@ -15,4 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Checks whether an account already exists for the given email. */
     boolean existsByEmail(String email);
+
+    /** Case-insensitive lookup, used for login/registration so "A@x.com" and "a@x.com" are the same account. */
+    Optional<User> findByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
 }

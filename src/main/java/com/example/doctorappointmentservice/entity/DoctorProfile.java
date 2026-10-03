@@ -36,4 +36,7 @@ public class DoctorProfile {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal consultationFee;
+
+    /** Cache-busting version of the profile photo; null when the doctor has no photo. */
+    private Long photoVersion;
 }

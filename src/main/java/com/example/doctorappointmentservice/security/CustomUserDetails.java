@@ -19,9 +19,15 @@ import java.util.List;
 public class CustomUserDetails implements UserDetails {
 
     private final User user;
+    private final boolean enabled;
 
     public CustomUserDetails(User user) {
+        this(user, true);
+    }
+
+    public CustomUserDetails(User user, boolean enabled) {
         this.user = user;
+        this.enabled = enabled;
     }
 
     /** Convenience accessor for the wrapped user's database id. */
@@ -64,6 +70,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 }
