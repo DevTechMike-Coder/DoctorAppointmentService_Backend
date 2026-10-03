@@ -68,6 +68,16 @@ public class DoctorService {
         DoctorProfile profile = doctorProfileRepository.findByUserId(userId)
                 .orElseGet(() -> DoctorProfile.builder().user(user).build());
 
+        // The display name lives on the User record; without this the submitted name was silently ignored.
+        String newName = dto.fullName() == null ? "" : dto.fullName().trim();
+        if (!newName.isEmpty() && !newName.equals(user.getFullName())) {
+            if (newName.length() > 255) {
+                throw new IllegalArgumentException("Name must be 255 characters or fewer");
+            }
+            user.setFullName(newName);
+            userRepository.save(user);
+        }
+
         profile.setSpecialization(dto.specialization());
         profile.setQualifications(dto.qualifications());
         profile.setBio(dto.bio());
