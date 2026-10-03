@@ -1,6 +1,7 @@
 package com.example.doctorappointmentservice.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -37,6 +38,10 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
 
+    /** Comma-separated browser origins allowed to call this API. Exact match: scheme + host (+ port), no trailing slash. */
+    @Value("${app.cors.allowed-origins:http://localhost:3000,https://doctor-appointment-service-frontend.vercel.app}")
+    private List<String> allowedOrigins;
+
     /** Password hashing strategy (BCrypt, strength 12) used for storing and checking credentials. */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -61,7 +66,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000", "https://doctor-appointment-service-frontend.vercel.app/", "https://doctorappointmentservicebackend-production.up.railway.app"));
+        config.setAllowedOrigins(allowedOrigins.stream()
+                .map(String::trim)
+                .map(o -> o.endsWith("/") ? o.substring(0, o.length() - 1) : o)
+                .filter(o -> !o.isEmpty())
+                .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
