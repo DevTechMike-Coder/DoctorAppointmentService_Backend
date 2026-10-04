@@ -2,15 +2,20 @@ package com.example.doctorappointmentservice.service;
 
 import com.example.doctorappointmentservice.dto.DoctorDto;
 import com.example.doctorappointmentservice.entity.DoctorProfile;
+import com.example.doctorappointmentservice.entity.PracticeLocation;
 import com.example.doctorappointmentservice.entity.User;
 import com.example.doctorappointmentservice.exception.ResourceNotFoundException;
 import com.example.doctorappointmentservice.repository.DoctorProfileRepository;
+import com.example.doctorappointmentservice.repository.PracticeLocationRepository;
 import com.example.doctorappointmentservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Manages doctor profile data: browsing/searching doctors, and letting a
@@ -22,13 +27,12 @@ public class DoctorService {
 
     private final DoctorProfileRepository doctorProfileRepository;
     private final UserRepository userRepository;
+    private final PracticeLocationRepository practiceLocationRepository;
 
     /** Lists every doctor profile in the system. */
     @Transactional(readOnly = true)
     public List<DoctorDto> getAllDoctors() {
-        return doctorProfileRepository.findAll().stream()
-                .map(DoctorDto::fromEntity)
-                .toList();
+        return toDtos(doctorProfileRepository.findAll());
     }
 
     /**
@@ -40,15 +44,13 @@ public class DoctorService {
     public DoctorDto getDoctorById(Long id) {
         DoctorProfile profile = doctorProfileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found with id: " + id));
-        return DoctorDto.fromEntity(profile);
+        return toDto(profile);
     }
 
     /** Case-insensitive partial-match search of doctors by specialization. */
     @Transactional(readOnly = true)
     public List<DoctorDto> searchBySpecialty(String specialty) {
-        return doctorProfileRepository.findBySpecializationContainingIgnoreCase(specialty).stream()
-                .map(DoctorDto::fromEntity)
-                .toList();
+        return toDtos(doctorProfileRepository.findBySpecializationContainingIgnoreCase(specialty));
     }
 
     /**
@@ -84,6 +86,27 @@ public class DoctorService {
         profile.setConsultationFee(dto.consultationFee());
 
         DoctorProfile saved = doctorProfileRepository.save(profile);
-        return DoctorDto.fromEntity(saved);
+        return toDto(saved);
+    }
+
+    /** Maps one profile, attaching its primary workplace (if any). */
+    private DoctorDto toDto(DoctorProfile profile) {
+        PracticeLocation primary = practiceLocationRepository
+                .findFirstByDoctorIdAndPrimaryLocationTrue(profile.getId())
+                .orElse(null);
+        return DoctorDto.fromEntity(profile, primary);
+    }
+
+    /** Maps many profiles with a single extra query for all their primary workplaces (no N+1). */
+    private List<DoctorDto> toDtos(List<DoctorProfile> profiles) {
+        if (profiles.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = profiles.stream().map(DoctorProfile::getId).toList();
+        Map<Long, PracticeLocation> primaryByDoctor = practiceLocationRepository.findPrimaryForDoctors(ids).stream()
+                .collect(Collectors.toMap(l -> l.getDoctor().getId(), Function.identity(), (a, b) -> a));
+        return profiles.stream()
+                .map(p -> DoctorDto.fromEntity(p, primaryByDoctor.get(p.getId())))
+                .toList();
     }
 }

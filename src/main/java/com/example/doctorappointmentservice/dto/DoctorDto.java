@@ -1,6 +1,7 @@
 package com.example.doctorappointmentservice.dto;
 
 import com.example.doctorappointmentservice.entity.DoctorProfile;
+import com.example.doctorappointmentservice.entity.PracticeLocation;
 import java.math.BigDecimal;
 
 /**
@@ -16,7 +17,11 @@ public record DoctorDto(
         String qualifications,
         String bio,
         BigDecimal consultationFee,
-        String photoUrl
+        String photoUrl,
+        /** City of the doctor's primary workplace; null if none (read-only, ignored on write). */
+        String primaryCity,
+        /** ISO 3166-1 alpha-2 country of the primary workplace; null if none (read-only, ignored on write). */
+        String primaryCountry
 ) {
     /**
      * Builds a {@link DoctorDto} from a {@link DoctorProfile} entity.
@@ -25,6 +30,15 @@ public record DoctorDto(
      * @return an immutable DTO suitable for returning from the API
      */
     public static DoctorDto fromEntity(DoctorProfile profile) {
+        return fromEntity(profile, null);
+    }
+
+    /**
+     * Same as {@link #fromEntity(DoctorProfile)} but also fills in the primary workplace city/country.
+     *
+     * @param primary the doctor's primary location, or null if they have none
+     */
+    public static DoctorDto fromEntity(DoctorProfile profile, PracticeLocation primary) {
         return new DoctorDto(
                 profile.getId(),
                 profile.getUser().getId(),
@@ -35,7 +49,9 @@ public record DoctorDto(
                 profile.getConsultationFee(),
                 profile.getPhotoVersion() == null
                         ? null
-                        : "/doctors/" + profile.getId() + "/photo?v=" + profile.getPhotoVersion()
+                        : "/doctors/" + profile.getId() + "/photo?v=" + profile.getPhotoVersion(),
+                primary == null ? null : primary.getCity(),
+                primary == null ? null : primary.getCountry()
         );
     }
 }

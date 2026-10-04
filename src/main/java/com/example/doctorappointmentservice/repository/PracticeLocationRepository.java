@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,14 @@ public interface PracticeLocationRepository extends JpaRepository<PracticeLocati
     Optional<PracticeLocation> findFirstByDoctorIdOrderByIdAsc(Long doctorId);
 
     long countByDoctorId(Long doctorId);
+
+    /** The primary location of one doctor, if they have any locations. */
+    Optional<PracticeLocation> findFirstByDoctorIdAndPrimaryLocationTrue(Long doctorId);
+
+    /** Primary locations for many doctors in one query (avoids N+1 when listing doctors). */
+    @Query("select l from PracticeLocation l join fetch l.doctor "
+            + "where l.primaryLocation = true and l.doctor.id in :doctorIds")
+    List<PracticeLocation> findPrimaryForDoctors(@Param("doctorIds") Collection<Long> doctorIds);
 
     /** Clears the primary flag on all of a doctor's locations (executed immediately via flush). */
     @Modifying(flushAutomatically = true)
