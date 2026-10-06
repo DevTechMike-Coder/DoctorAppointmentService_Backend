@@ -2,9 +2,11 @@ package com.example.doctorappointmentservice.controller;
 
 import com.example.doctorappointmentservice.dto.AppointmentDto;
 import com.example.doctorappointmentservice.dto.BookAppointmentRequest;
+import com.example.doctorappointmentservice.dto.MeetingJoinResponse;
 import com.example.doctorappointmentservice.dto.UpdateAppointmentStatusRequest;
 import com.example.doctorappointmentservice.security.CustomUserDetails;
 import com.example.doctorappointmentservice.service.AppointmentService;
+import com.example.doctorappointmentservice.service.meeting.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,7 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final MeetingService meetingService;
 
     /**
      * {@code POST /api/v1/appointments} — books an appointment for the
@@ -68,7 +71,7 @@ public class AppointmentController {
      * appointments for a given doctor. Doctor/Admin only.
      */
     @GetMapping("/doctor/{doctorId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('DOCTOR') and @availabilitySecurity.isOwnerOfDoctorProfile(#doctorId, authentication))")
     public ResponseEntity<List<AppointmentDto>> getAppointmentsForDoctor(@PathVariable Long doctorId) {
         return ResponseEntity.ok(appointmentService.getAppointmentsForDoctor(doctorId));
     }
@@ -78,7 +81,7 @@ public class AppointmentController {
      * appointment's status (e.g. confirm/cancel/complete). Doctor/Admin only.
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('DOCTOR') and @appointmentSecurity.isDoctorOfAppointment(#id, authentication))")
     public ResponseEntity<AppointmentDto> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateAppointmentStatusRequest request
@@ -96,5 +99,17 @@ public class AppointmentController {
     public ResponseEntity<Void> cancelAppointment(@PathVariable Long id) {
         appointmentService.cancelAppointment(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * {@code POST /api/v1/appointments/{id}/meeting} — returns a join URL for the video call.
+     * Ownership, status and time-window checks happen in {@link MeetingService}.
+     */
+    @PostMapping("/{id}/meeting")
+    public ResponseEntity<MeetingJoinResponse> joinMeeting(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal
+    ) {
+        return ResponseEntity.ok(meetingService.join(id, principal.getId()));
     }
 }

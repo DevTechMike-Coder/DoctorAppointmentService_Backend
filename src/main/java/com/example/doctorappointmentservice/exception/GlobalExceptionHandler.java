@@ -6,12 +6,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -91,6 +97,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /** Handles {@link MeetingUnavailableException} → HTTP 409, or 503 when the video provider is the problem. */
+    @ExceptionHandler(MeetingUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleMeetingUnavailable(
+            MeetingUnavailableException ex, HttpServletRequest request) {
+        HttpStatus status = ex.isProviderFailure() ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.CONFLICT;
+        ErrorResponse body = new ErrorResponse(
+                status.value(), status.getReasonPhrase(), ex.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(status).body(body);
+    }
+
     /** Handles {@link SlotUnavailableException} → HTTP 409. */
     @ExceptionHandler(SlotUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleSlotUnavailable(
@@ -114,10 +130,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, HttpServletRequest request) {
         log.warn("Database constraint violation at {}: {}", request.getRequestURI(), ex.getMessage());
+        // Only the appointment/slot uniqueness constraints mean "double booking"; anything else
+        // (NOT NULL, value too long, ...) is a different problem and must not be reported as one.
+        Throwable cause = ex.getMostSpecificCause();
+        boolean slotConflict = cause != null && cause.getMessage() != null
+                && cause.getMessage().contains("uq_appointments");
         ErrorResponse body = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
-                "This time slot has already been booked.",
+                slotConflict
+                        ? "This time slot has already been booked."
+                        : "The request conflicts with existing data or violates a data constraint.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
@@ -170,6 +193,42 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles Spring Security denials raised by {@code @PreAuthorize}. Without this, the catch-all below
+     * swallows them and the client gets a 500 instead of 403 (wrong role / not the owner) or 401
+     * (no or expired token on a URL that SecurityConfig leaves open, such as /api/v1/doctors/**).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean anonymous = auth == null || auth instanceof AnonymousAuthenticationToken;
+        HttpStatus status = anonymous ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
+        ErrorResponse body = new ErrorResponse(
+                status.value(),
+                status.getReasonPhrase(),
+                anonymous ? "Authentication required" : "You don't have permission to perform this action",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    /** Malformed JSON bodies and parameters of the wrong type (e.g. a bad date) are client errors → 400. */
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleUnreadableRequest(
+            Exception ex, HttpServletRequest request) {
+        String message = ex instanceof MethodArgumentTypeMismatchException mismatch
+                ? "Invalid value for parameter '" + mismatch.getName() + "'"
+                : "Malformed or unreadable request body";
+        ErrorResponse body = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                message,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
      * Catch-all fallback for any exception not handled above → HTTP 500.
      * Logs the full stack trace server-side but hides internal details
      * from the client response.
@@ -177,6 +236,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
+        // Spring MVC's own exceptions (404 unknown route, 405, 415, missing parameter, ...) carry their
+        // own status; without this they were all reported as 500.
+        if (ex instanceof org.springframework.web.ErrorResponse springError) {
+            HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());
+            if (status.is5xxServerError()) {
+                log.error("Unhandled exception at {}", request.getRequestURI(), ex);
+            }
+            String detail = springError.getBody().getDetail();
+            ErrorResponse body = new ErrorResponse(
+                    status.value(),
+                    status.getReasonPhrase(),
+                    detail != null ? detail : status.getReasonPhrase(),
+                    request.getRequestURI()
+            );
+            return ResponseEntity.status(status).body(body);
+        }
         log.error("Unhandled exception at {}", request.getRequestURI(), ex);
         ErrorResponse body = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),

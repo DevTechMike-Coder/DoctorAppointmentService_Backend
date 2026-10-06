@@ -109,6 +109,23 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + appointmentId));
 
+        AppointmentStatus current = appointment.getStatus();
+        if (current == newStatus) {
+            return AppointmentDto.fromEntity(appointment); // idempotent, e.g. cancelling twice
+        }
+        // CANCELLED/COMPLETED are final. Without this, re-confirming a cancelled appointment leaves its
+        // slot released, so a second patient could book a slot that already has a live appointment.
+        if (current == AppointmentStatus.CANCELLED || current == AppointmentStatus.COMPLETED) {
+            throw new IllegalStateException(
+                    "A " + current.name().toLowerCase() + " appointment can no longer be changed");
+        }
+        if (newStatus == AppointmentStatus.PENDING) {
+            throw new IllegalStateException("An appointment can't be moved back to pending");
+        }
+        if (newStatus == AppointmentStatus.COMPLETED && current != AppointmentStatus.CONFIRMED) {
+            throw new IllegalStateException("Only a confirmed appointment can be marked completed");
+        }
+
         appointment.setStatus(newStatus);
 
         if (newStatus == AppointmentStatus.CANCELLED) {

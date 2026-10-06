@@ -26,8 +26,10 @@ public class Appointment {
     @JoinColumn(name = "patient_id", nullable = false)
     private User patient;
 
-    @OneToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "slot_id", nullable = false, unique = true)
+    // Several appointments can reference one slot over time (cancelled ones stay as history);
+    // "only one ACTIVE appointment per slot" is enforced by the partial unique index added in V5.
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "slot_id", nullable = false)
     private AvailabilitySlot slot;
 
     @Enumerated(EnumType.STRING)
@@ -36,6 +38,13 @@ public class Appointment {
 
     @Column(columnDefinition = "TEXT")
     private String reason;
+
+    /** Video-call room name; null until the first participant joins. Never exposed via the API. */
+    @Column(length = 64)
+    private String meetingRoomName;
+
+    @Column(length = 255)
+    private String meetingRoomUrl;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

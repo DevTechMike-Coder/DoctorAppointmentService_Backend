@@ -2,6 +2,12 @@ package com.example.doctorappointmentservice.dto;
 
 import com.example.doctorappointmentservice.entity.DoctorProfile;
 import com.example.doctorappointmentservice.entity.PracticeLocation;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 
 /**
@@ -12,10 +18,18 @@ import java.math.BigDecimal;
 public record DoctorDto(
         Long id,
         Long userId,
+        @Size(max = 255, message = "Name must be 255 characters or fewer")
         String fullName,
+        @NotBlank(message = "Specialization is required")
+        @Size(max = 255, message = "Specialization must be 255 characters or fewer")
         String specialization,
+        @Size(max = 255, message = "Qualifications must be 255 characters or fewer")
         String qualifications,
+        @Size(max = 255, message = "Bio must be 255 characters or fewer")
         String bio,
+        @NotNull(message = "Consultation fee is required")
+        @DecimalMin(value = "0.00", message = "Consultation fee can't be negative")
+        @Digits(integer = 17, fraction = 2, message = "Consultation fee must have at most 2 decimal places")
         BigDecimal consultationFee,
         String photoUrl,
         /** City of the doctor's primary workplace; null if none (read-only, ignored on write). */

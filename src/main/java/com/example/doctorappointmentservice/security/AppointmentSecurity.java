@@ -38,6 +38,19 @@ public class AppointmentSecurity {
                 .orElse(false);
     }
 
+    /**
+     * Checks whether the authenticated user is the doctor whose slot this appointment occupies
+     * (stops one doctor from changing another doctor's appointments).
+     */
+    public boolean isDoctorOfAppointment(Long appointmentId, Authentication authentication) {
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+        return appointmentRepository.findById(appointmentId)
+                .map(appt -> isDoctorOwner(appt, principal.getId()))
+                .orElse(false);
+    }
+
     /** True if the given user is the patient who booked this appointment. */
     private boolean isPatientOwner(Appointment appt, Long userId) {
         return appt.getPatient().getId().equals(userId);

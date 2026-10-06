@@ -3,6 +3,7 @@ package com.example.doctorappointmentservice.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,12 @@ public class JwtService {
 
     @Value("${app.jwt.expiration-ms}")
     private long expirationMs;
+
+    /** Fails at startup (instead of on the first login → 500) if JWT_SECRET is shorter than 32 bytes. */
+    @PostConstruct
+    void validateSecret() {
+        getSigningKey();
+    }
 
     /** Derives the HMAC signing key from the configured {@code app.jwt.secret}. */
     private SecretKey getSigningKey() {
